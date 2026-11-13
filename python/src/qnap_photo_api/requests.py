@@ -9,6 +9,8 @@ from .enums import AlbumSort, AlbumType, Collection, MediaType, Sort, SortDirect
 
 @dataclass
 class ListRequest:
+    """Page of media (photos, videos or both)."""
+
     collection: Collection = Collection.SHARED
     media_type: MediaType = MediaType.ALL
     page_size: int = 100  # matches the page size of the Photo Station app
@@ -18,6 +20,7 @@ class ListRequest:
     rating: StarRating | None = None
 
     def to_params(self) -> dict[str, str]:
+        """Query parameters for ``list.php``."""
         params = {
             "h": self.collection.value,
             "json": "1",
@@ -34,6 +37,8 @@ class ListRequest:
 
 @dataclass
 class ListAlbumPhotosRequest:
+    """Page of media inside one album."""
+
     album_id: str
     collection: Collection = Collection.SHARED
     page_size: int = 100
@@ -42,6 +47,7 @@ class ListAlbumPhotosRequest:
     sort_direction: SortDirection = SortDirection.DESCENDING
 
     def to_params(self) -> dict[str, str]:
+        """Query parameters for ``list.php``."""
         return {
             "h": self.collection.value,
             "json": "1",
@@ -56,6 +62,8 @@ class ListAlbumPhotosRequest:
 
 @dataclass
 class ListAlbumsRequest:
+    """Page of albums."""
+
     collection: Collection = Collection.SHARED
     album_type: AlbumType = AlbumType.ALL
     sort: AlbumSort = AlbumSort.TITLE
@@ -64,6 +72,7 @@ class ListAlbumsRequest:
     page_size: int = 50
 
     def to_params(self) -> dict[str, str]:
+        """Query parameters for ``list.php``."""
         return {
             "json": "1",
             "t": self.album_type.value,

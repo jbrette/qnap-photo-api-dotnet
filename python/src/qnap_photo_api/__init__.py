@@ -3,7 +3,16 @@
 from .auth import AUTH_COOKIE_NAME, LoginResponse, QnapAuth
 from .client import PhotoStationClient
 from .config import QnapApiOptions
-from .enums import AlbumSort, AlbumType, Collection, ImageSize, MediaType, Sort, SortDirection, StarRating
+from .enums import (
+    AlbumSort,
+    AlbumType,
+    Collection,
+    ImageSize,
+    MediaType,
+    Sort,
+    SortDirection,
+    StarRating,
+)
 from .models import (
     AlbumItem,
     FileItem,

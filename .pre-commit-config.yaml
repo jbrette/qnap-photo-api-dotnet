@@ -1,0 +1,39 @@
+# Pre-commit hooks for the Python port (python/). C# code is not covered here.
+#
+#   uv run --project python pre-commit install            # once per clone
+#   uv run --project python pre-commit run --all-files    # by hand
+#
+# The ruff rev must match the `ruff==` pin in python/pyproject.toml.
+# mypy and pytest run as local hooks through uv so they use python/uv.lock: the
+# isolated mirrors-mypy environment has no pydantic/httpx/fastapi, which breaks
+# --strict and the pydantic plugin.
+default_install_hook_types: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        files: ^python/
+      - id: ruff-format
+        files: ^python/
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy --strict (python/)
+        entry: uv run --directory python mypy
+        language: system
+        files: ^python/.*\.(py|pyi|toml)$
+        pass_filenames: false
+        require_serial: true
+
+      - id: pytest
+        name: pytest + 100% branch coverage (python/)
+        entry: uv run --directory python pytest -q
+        language: system
+        files: ^python/.*\.(py|pyi|toml)$
+        pass_filenames: false
+        require_serial: true

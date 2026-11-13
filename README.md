@@ -86,3 +86,9 @@ app.MapGet("/list-album/{page:int}", async (int page, [FromServices] IPhotoStati
     .WithTags("QnapPhotos")
     .WithOpenApi();
 ```
+
+## Documentation
+
+- [`architecture.md`](architecture.md): module map, NAS contracts and invariants, for anyone changing the code.
+- [`python/README.md`](python/README.md): the Python port.
+- [`docs/review.md`](docs/review.md): open code-review findings.

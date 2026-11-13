@@ -396,3 +396,6 @@ python/dist/
 
 # macOS
 .DS_Store
+
+# Operator-local session state (alemax: resume, feedback, handoff, outbox)
+.local/

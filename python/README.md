@@ -5,9 +5,9 @@ Python port of `Ragware.QnapPhotoApi`: an async client for the QNAP Photo Statio
 ## Install
 
 ```bash
-pip install -e .            # client only (httpx, pydantic)
-pip install -e '.[server]'  # + FastAPI image proxy and sample host
-pip install -e '.[dev]'     # + pytest
+uv sync                   # client + dev tools (Python 3.14+; httpx, pydantic, defusedxml)
+uv sync --all-extras      # + FastAPI image proxy and sample host
+pip install .             # consumers without uv
 ```
 
 ## Configuration
@@ -31,7 +31,8 @@ Image proxy in a FastAPI app:
 ```python
 from qnap_photo_api.proxy import create_image_router
 
-app.include_router(create_image_router(get_client))  # get_client: dependency returning the shared client
+# get_client: a FastAPI dependency returning the shared client
+app.include_router(create_image_router(get_client))
 ```
 
 `examples/webhost.py` mirrors the C# `QnapPhotoApi.WebHost`:
@@ -40,11 +41,15 @@ app.include_router(create_image_router(get_client))  # get_client: dependency re
 QNAP_BASE_URL=http://nas QNAP_USERNAME=... QNAP_PASSWORD=... uvicorn examples.webhost:app --reload
 ```
 
-## Tests
+## Checks
+
+ruff runs with every rule family enabled, and mypy runs in strict mode with the pydantic plugin. Every function, test and example is fully typed (the package ships `py.typed`). The few ignores are documented in `pyproject.toml`.
 
 ```bash
-pytest
-pytest tests/test_models.py::test_full_response_deserializes
+uv run pytest                                   # fails under 100% branch coverage
+uv run pytest tests/test_models.py::test_full_response_deserializes
+uv run ruff check . && uv run ruff format --check .
+uv run mypy                                     # --strict over src/, tests/, examples/
 ```
 
 ## Differences from the C# library
@@ -56,3 +61,4 @@ pytest tests/test_models.py::test_full_response_deserializes
 - A failed login is not cached; the C# handler cached the failure for `AuthTimeoutInHours`. Concurrent requests share one login.
 - Query parameters are URL-encoded (e.g. album IDs).
 - The image proxy drops hop-by-hop headers and the NAS `Set-Cookie`, so the NAS session is not exposed to browsers.
+- The login XML is parsed with `defusedxml`, so entity expansion and external references are refused.

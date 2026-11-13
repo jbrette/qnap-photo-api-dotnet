@@ -19,7 +19,7 @@ QNAP_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 QNAP_DATE_FORMAT = "%Y-%m-%d"
 
 
-def _blank_to_none(value: Any) -> Any:
+def _blank_to_none(value: object) -> object:
     if value is None:
         return None
     if isinstance(value, str) and not value.strip():
@@ -27,7 +27,7 @@ def _blank_to_none(value: Any) -> Any:
     return value
 
 
-def _parse_datetime(value: Any) -> datetime | None:
+def _parse_datetime(value: object) -> datetime | None:
     value = _blank_to_none(value)
     if value is None or isinstance(value, datetime):
         return value
@@ -35,7 +35,7 @@ def _parse_datetime(value: Any) -> datetime | None:
     if text.startswith("0000-00-00"):
         return None
     try:
-        return datetime.strptime(text, QNAP_DATETIME_FORMAT)
+        return datetime.strptime(text, QNAP_DATETIME_FORMAT)  # noqa: DTZ007 - NAS local time, no zone
     except ValueError:
         try:
             return datetime.fromisoformat(text)
@@ -43,20 +43,22 @@ def _parse_datetime(value: Any) -> datetime | None:
             return None
 
 
-def _parse_date(value: Any) -> date | None:
+def _parse_date(value: object) -> date | None:
     value = _blank_to_none(value)
+    if isinstance(value, datetime):  # check first: datetime is a subclass of date
+        return value.date()
     if value is None or isinstance(value, date):
         return value
     text = str(value).strip()
     if text.startswith("0000-00-00"):
         return None
     try:
-        return datetime.strptime(text[:10], QNAP_DATE_FORMAT).date()
+        return datetime.strptime(text[:10], QNAP_DATE_FORMAT).date()  # noqa: DTZ007 - date only
     except ValueError:
         return None
 
 
-def _parse_keywords(value: Any) -> list[str]:
+def _parse_keywords(value: object) -> list[str]:
     if value is None:
         return []
     if isinstance(value, list):
@@ -72,6 +74,8 @@ QnapRating = Annotated[StarRating | None, BeforeValidator(StarRating.from_qnap)]
 
 
 class QnapModel(BaseModel):
+    """Base model: accepts QNAP aliases or field names and keeps unknown fields."""
+
     # Unknown fields are kept (accessible via model_extra) rather than rejected.
     model_config = ConfigDict(populate_by_name=True, extra="allow")
 
@@ -123,10 +127,14 @@ class FileItem(QnapModel):
 
 
 class FileEntry(QnapModel):
+    """One ``DataList`` entry of a media list."""
+
     file_item: FileItem | None = Field(None, alias="FileItem")
 
 
 class ListResponse(QnapModel):
+    """Page of media from ``list.php``."""
+
     status: str | None = None
     total_items: QnapInt = Field(None, alias="photoCount")
     data: list[FileEntry] = Field(default_factory=list, alias="DataList")
@@ -134,10 +142,12 @@ class ListResponse(QnapModel):
 
 
 class ListAlbumPhotosResponse(ListResponse):
-    pass
+    """Page of media inside one album; same shape as ``ListResponse``."""
 
 
 class AlbumItem(QnapModel):
+    """An album (manual or smart)."""
+
     photo_album_id: str | None = Field(None, alias="iPhotoAlbumId")
     album_title: str | None = Field(None, alias="cAlbumTitle")
     date_created: QnapDateTime = Field(None, alias="DateCreated")
@@ -148,18 +158,26 @@ class AlbumItem(QnapModel):
 
 
 class AlbumEntry(QnapModel):
+    """One ``DataList`` entry of the album list."""
+
     file_item: AlbumItem | None = Field(None, alias="FileItem")
 
 
 class KeywordItem(QnapModel):
+    """A keyword known to the NAS."""
+
     keyword: str | None = Field(None, alias="Keyword")
 
 
 class KeywordEntry(QnapModel):
+    """One ``KeywordList`` entry of the album list (shape unverified against a NAS)."""
+
     item: KeywordItem | None = Field(None, alias="Item")
 
 
 class ListAlbumsResponse(QnapModel):
+    """Page of albums from ``list.php``."""
+
     status: str | None = None
     data: list[AlbumEntry] = Field(default_factory=list, alias="DataList")
     keywords: list[KeywordEntry] = Field(default_factory=list, alias="KeywordList")

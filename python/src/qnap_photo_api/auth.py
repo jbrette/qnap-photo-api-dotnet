@@ -12,13 +12,18 @@ import base64
 import logging
 import threading
 import time
-import xml.etree.ElementTree as ET
-from collections.abc import AsyncGenerator, Callable, Generator
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Self, override
+from xml.etree.ElementTree import ParseError
 
 import httpx
+from defusedxml import DefusedXmlException
+from defusedxml.ElementTree import fromstring
 
-from .config import QnapApiOptions
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable, Generator
+
+    from .config import QnapApiOptions
 
 AUTH_COOKIE_NAME = "NAS_SID"
 LOGIN_PATH = "/cgi-bin/authLogin.cgi"
@@ -28,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class LoginResponse:
+    """Parsed ``authLogin.cgi`` reply."""
+
     auth_passed: bool
     sid: str | None = None
     username: str | None = None
@@ -35,20 +42,27 @@ class LoginResponse:
     is_booting: bool = False
 
     @classmethod
-    def from_xml(cls, text: str) -> LoginResponse | None:
+    def from_xml(cls, text: str) -> Self | None:
+        """Parse a ``QDocRoot`` reply; return None for anything else.
+
+        Parsing is hardened (``defusedxml``): entity expansion and external
+        references are refused rather than resolved.
+        """
         try:
-            root = ET.fromstring(text)
-        except ET.ParseError:
+            root = fromstring(text)
+        except ParseError, DefusedXmlException:
             return None
         if root.tag != "QDocRoot":
             return None
 
         def field(name: str) -> str | None:
-            el = root.find(name)
-            return el.text.strip() if el is not None and el.text else None
+            element = root.find(name)
+            if element is None or element.text is None:
+                return None
+            return element.text.strip()
 
         def flag(name: str) -> bool:
-            return (field(name) or "").lower() in ("1", "true")
+            return (field(name) or "").lower() in {"1", "true"}
 
         return cls(
             auth_passed=flag("authPassed"),
@@ -60,7 +74,19 @@ class LoginResponse:
 
 
 class QnapAuth(httpx.Auth):
-    def __init__(self, options: QnapApiOptions, clock: Callable[[], float] = time.monotonic) -> None:
+    """Logs in once, caches the session, and adds the ``NAS_SID`` cookie to every request."""
+
+    def __init__(
+        self,
+        options: QnapApiOptions,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        """Create the auth for one NAS.
+
+        Args:
+            options: NAS connection settings.
+            clock: Monotonic clock in seconds; injectable for tests.
+        """
         self._options = options
         self._clock = clock
         self._sid: str | None = None
@@ -79,7 +105,7 @@ class QnapAuth(httpx.Auth):
         return None
 
     def _login_request(self) -> httpx.Request:
-        password = base64.b64encode(self._options.password.encode("utf-8")).decode("ascii")
+        password = base64.b64encode(self._options.password.encode()).decode("ascii")
         return httpx.Request(
             "POST",
             self._options.base_url + LOGIN_PATH,
@@ -89,7 +115,9 @@ class QnapAuth(httpx.Auth):
     def _store_login(self, response: httpx.Response) -> str | None:
         login = LoginResponse.from_xml(response.text)
         if login is None:
-            logger.warning("Could not parse QNAP login response; requests will be sent unauthenticated")
+            logger.warning(
+                "Could not parse QNAP login response; requests will be sent unauthenticated"
+            )
             return None
         if not login.auth_passed or not login.sid:
             logger.warning("Login to QNAP NAS failed; check username and password")
@@ -104,8 +132,9 @@ class QnapAuth(httpx.Auth):
         if sid:
             request.headers["Cookie"] = f"{AUTH_COOKIE_NAME}={sid}"
 
-    # Synchronous clients.
-    def sync_auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
+    @override
+    def sync_auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response]:
+        """Authenticate a request from a synchronous ``httpx.Client``."""
         with self._sync_lock:
             sid = self._cached_sid()
             if sid is None:
@@ -115,8 +144,14 @@ class QnapAuth(httpx.Auth):
         self._apply(request, sid)
         yield request
 
-    # Async clients. The lock stops concurrent requests from each logging in.
-    async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
+    @override
+    async def async_auth_flow(
+        self, request: httpx.Request
+    ) -> AsyncGenerator[httpx.Request, httpx.Response]:
+        """Authenticate a request from an ``httpx.AsyncClient``.
+
+        The lock stops concurrent requests from each logging in.
+        """
         async with self._async_lock:
             sid = self._cached_sid()
             if sid is None:
