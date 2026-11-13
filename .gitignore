@@ -377,3 +377,22 @@ MigrationBackup/
 
 #Rider
 .idea/
+# Python (python/)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+*.egg-info/
+python/build/
+python/dist/
+
+# Local NAS credentials (QNAP_* variables for the Python port)
+.env
+.env.*
+
+# macOS
+.DS_Store
