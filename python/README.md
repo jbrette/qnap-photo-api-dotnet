@@ -10,6 +10,12 @@ uv sync --all-extras      # + FastAPI image proxy and sample host
 pip install .             # consumers without uv
 ```
 
+Current version: `26.11.13`, tagged `v26.11.13` (also `qnap_photo_api.__version__`). To depend on it from another project, pin the tag:
+
+```bash
+uv add "qnap-photo-api @ git+https://github.com/jbrette/qnap-photo-api-dotnet@v26.11.13#subdirectory=python"
+```
+
 ## Configuration
 
 `QnapApiOptions(base_url, username, password, auth_timeout_hours=1)`, or `QnapApiOptions.from_env()` reading `QNAP_BASE_URL`, `QNAP_USERNAME`, `QNAP_PASSWORD`, `QNAP_AUTH_TIMEOUT_HOURS`.

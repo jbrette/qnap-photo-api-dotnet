@@ -721,7 +721,7 @@ wheels = [
 
 [[package]]
 name = "qnap-photo-api"
-version = "0.8.1"
+version = "26.11.13"
 source = { editable = "." }
 dependencies = [
     { name = "defusedxml" },

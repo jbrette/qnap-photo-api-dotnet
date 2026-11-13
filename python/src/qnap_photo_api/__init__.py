@@ -22,6 +22,8 @@ from .models import (
 )
 from .requests import ListAlbumPhotosRequest, ListAlbumsRequest, ListRequest
 
+__version__ = "26.11.13"
+
 __all__ = [
     "AUTH_COOKIE_NAME",
     "AlbumItem",
@@ -44,4 +46,5 @@ __all__ = [
     "Sort",
     "SortDirection",
     "StarRating",
+    "__version__",
 ]

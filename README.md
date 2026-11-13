@@ -10,6 +10,10 @@ Provides the following capabilities.
    - `/image/{imageId}` - Full size image
    - `/thumb/{imageId}` - Thumbnail of the supplied image. The size of this thumbnail depends on how thumbnails are processed in your NAS.
 
+## Version
+
+Current release: **v26.11.13** (git tag `v26.11.13`). The NuGet package and the Python package (`python/`) carry the same version, `26.11.13`.
+
 ## Configuration 
 
 1. Get the nuget package
